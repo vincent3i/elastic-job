@@ -41,24 +41,35 @@ public abstract class AbstractDataFlowElasticJob<T, C extends AbstractJobExecuti
     public final void updateOffset(final int item, final String offset) {
         getOffsetService().updateOffset(item, offset);
     }
-    
+
+    /**
+     * 处理分片数据
+     * @param shardingContext 作业分片规则配置上下文
+     * @param data 待处理的数据
+     */
     protected final void processDataWithStatistics(final C shardingContext, final List<T> data) {
         for (T each : data) {
-            boolean isSuccess = false;
-            try {
-                isSuccess = processData(shardingContext, each);
+            processDataWithStatistics(shardingContext, each);
+        }
+    }
+
+    /**
+     * 处理分片数据
+     * @param shardingContext 作业分片规则配置上下文
+     * @param data 待处理的数据
+     */
+    protected final void processDataWithStatistics(final C shardingContext, final T data) {
+        try {
             // CHECKSTYLE:OFF
-            } catch (final Exception ex) {
-            // CHECKSTYLE:ON
-                ProcessCountStatistics.incrementProcessFailureCount(shardingContext.getJobName());
-                log.error("Elastic job: exception occur in job processing...", ex);
-                continue;
-            }
-            if (isSuccess) {
+            if (processData(shardingContext, data)) {
                 ProcessCountStatistics.incrementProcessSuccessCount(shardingContext.getJobName());
             } else {
                 ProcessCountStatistics.incrementProcessFailureCount(shardingContext.getJobName());
             }
+        } catch (final Exception ex) {
+            ProcessCountStatistics.incrementProcessFailureCount(shardingContext.getJobName());
+            // CHECKSTYLE:ON
+            log.error("Elastic job: exception occur in job processing...", ex);
         }
     }
     
